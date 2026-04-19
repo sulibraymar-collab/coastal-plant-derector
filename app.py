@@ -2,51 +2,51 @@ import streamlit as st
 import torch
 from PIL import Image
 from ultralytics import YOLO
+import matplotlib.pyplot as plt
 
 # --- PAGE CONFIG ---
-st.set_page_config(page_title="Coastal Plant AI Detector", page_icon="🌿")
+st.set_page_config(page_title="Coastal AI Detector", page_icon="🌿")
 
 st.title("🌿 Coastal Plant Species Detector")
-st.write("Upload an image to detect **Mangroves, Seagrass, Seaweed, and Corals**.")
-
-# --- SIDEBAR ---
-st.sidebar.header("Settings")
-confidence_threshold = st.sidebar.slider("Confidence", 0.0, 1.0, 0.45)
+st.write("Detecting: Mangroves, Seagrass, Seaweed, and Corals")
 
 # --- LOAD MODEL ---
 @st.cache_resource
 def load_model():
-    # This loads your trained best.pt
     return YOLO("best.pt")
 
 model = load_model()
 
 # --- UPLOADER ---
-uploaded_file = st.file_uploader("Choose a coastal image...", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
 
 if uploaded_file:
-    image = Image.open(uploaded_file)
+    img = Image.open(uploaded_file)
     
     # Run Detection
-    results = model.predict(image, conf=confidence_threshold)
+    results = model.predict(img, conf=0.4)
     
-    # The 'plot()' function from Ultralytics uses its own internal logic
-    # so we don't need to import cv2 here!
-    res_plotted = results[0].plot()
+    # --- DRAWING WITHOUT CV2 ---
+    # We use matplotlib to show the results instead of cv2.plot()
+    fig, ax = plt.subplots()
+    ax.imshow(img)
     
-    # Show the result
-    st.image(res_plotted, caption="Detection Results", use_container_width=True)
+    # Draw boxes manually from results
+    for box in results[0].boxes:
+        # Get coordinates
+        b = box.xyxy[0].to('cpu').detach().numpy() 
+        c = box.cls
+        # Draw a simple rectangle
+        rect = plt.Rectangle((b[0], b[1]), b[2]-b[0], b[3]-b[1], 
+                             fill=False, color='red', linewidth=2)
+        ax.add_patch(rect)
+        ax.text(b[0], b[1], f"{model.names[int(c)]}", 
+                color='white', fontsize=8, bbox=dict(facecolor='red', alpha=0.5))
     
-    # Summary of detections
-    st.write("### Found:")
-    names = results[0].names
-    counts = {}
+    plt.axis('off')
+    st.pyplot(fig)
+    
+    # Summary list
+    st.write("### Detection Summary:")
     for c in results[0].boxes.cls:
-        label = names[int(c)]
-        counts[label] = counts.get(label, 0) + 1
-    
-    if counts:
-        for plant, count in counts.items():
-            st.info(f"{plant}: {count}")
-    else:
-        st.warning("No coastal plants detected at this confidence level.")
+        st.success(f"Found: {model.names[int(c)]}")
