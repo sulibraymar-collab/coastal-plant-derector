@@ -1,4 +1,4 @@
 ultralytics
 streamlit
 pillow
-opencv-python-headless==4.8.0.74
+matplotlib
