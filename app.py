@@ -50,3 +50,4 @@ if uploaded_file:
     st.write("### Detection Summary:")
     for c in results[0].boxes.cls:
         st.success(f"Found: {model.names[int(c)]}")
+hello
